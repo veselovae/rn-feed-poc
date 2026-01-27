@@ -124,9 +124,7 @@ function ProductRow({ item, onOpen }: { item: Product; onOpen: () => void }) {
           {item.name}
         </Text>
         <Text style={styles.price}>
-          {item.price != null
-            ? `${item.price.toFixed(2)} ₽`
-            : "Цена не указана"}
+          {item.price != null ? `${item.price} ₽` : "Цена не указана"}
         </Text>
       </View>
     </Pressable>

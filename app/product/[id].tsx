@@ -146,7 +146,7 @@ export default function ProductPage() {
 
             <Text style={styles.price}>
               {currentVariant.price != null
-                ? `${currentVariant.price.toFixed(2)} ₽`
+                ? `${currentVariant.price} ₽`
                 : "Цена не указана"}
             </Text>
 
