@@ -1,142 +1,96 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useProducts } from "./products-context";
-import { Product } from "./types";
-import { normalizeProductId } from "./utils";
 
-export default function Index() {
+export default function CategoriesScreen() {
   const router = useRouter();
-  const { loading, error, products, reload } = useProducts();
+  const { loading, error, categories, shopName } = useProducts();
+
+  if (loading) return <Text>Загрузка…</Text>;
+  if (error) return <Text>{error}</Text>;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Product feed PoC</Text>
+    <>
+      <Stack.Screen
+        options={{
+          title: `${shopName ? `${shopName}: ` : ""} Каталог`,
+        }}
+      />
 
-      {loading && (
-        <View style={styles.center}>
-          <ActivityIndicator />
-          <Text style={styles.muted}>Загружаю товары…</Text>
-        </View>
-      )}
-
-      {!loading && error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorTitle}>Ошибка</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable onPress={reload} style={styles.button}>
-            <Text style={styles.buttonText}>Повторить</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {!loading && !error && (
-        <FlatList
-          data={products}
-          keyExtractor={(p) => p.id}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          renderItem={({ item }) => (
-            <ProductRow
-              item={item}
-              onOpen={() =>
-                router.push({
-                  pathname: "/product/[id]",
-                  params: { id: normalizeProductId(item.id) },
-                })
-              }
-            />
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        />
-      )}
-    </View>
-  );
-}
-
-function ProductRow({ item, onOpen }: { item: Product; onOpen: () => void }) {
-  const [imageLoading, setImageLoading] = useState(false);
-  const [imageError, setImageError] = useState(false);
-
-  return (
-    <Pressable onPress={onOpen} style={styles.card}>
-      {!!item.picture && !imageError ? (
-        <View style={{ alignItems: "center", justifyContent: "center" }}>
-          <Image
-            source={{ uri: item.picture }}
-            style={styles.image}
-            resizeMode="cover"
-            onError={() => {
-              setImageLoading(false);
-              setImageError(true);
-            }}
-            onLoadStart={() => setImageLoading(true)}
-            onLoadEnd={() => setImageLoading(false)}
-          />
-          {imageLoading && (
-            <View style={{ position: "absolute" }}>
-              <ActivityIndicator />
+      <FlatList
+        data={categories}
+        keyExtractor={(c) => String(c.id)}
+        renderItem={({ item }) => (
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/category/[id]",
+                params: { id: String(item.id) },
+              })
+            }
+            style={styles.categoryRow}
+          >
+            <View style={styles.row}>
+              <Text style={styles.categoryName}>{item.name}</Text>
+              <View
+                style={[
+                  styles.countBadge,
+                  item.productCount === 0 && styles.countBadgeDisabled,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.countText,
+                    item.productCount === 0 && styles.countTextDisabled,
+                  ]}
+                >
+                  {item.productCount}
+                </Text>
+              </View>
             </View>
-          )}
-        </View>
-      ) : (
-        <View style={[styles.image, styles.imagePlaceholder]}>
-          <Text style={styles.muted}>no image</Text>
-        </View>
-      )}
-
-      <View style={{ flex: 1, gap: 6 }}>
-        <Text style={styles.title} numberOfLines={2}>
-          {item.name}
-        </Text>
-        <Text style={styles.price}>
-          {item.price != null
-            ? `${item.price.toFixed(2)} ₽`
-            : "Цена не указана"}
-        </Text>
-      </View>
-    </Pressable>
+          </Pressable>
+        )}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60, paddingHorizontal: 16 },
-  header: { fontSize: 22, fontWeight: "700", marginBottom: 12 },
-  center: {
+  categoryRow: {
+    padding: 16,
+  },
+
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  categoryName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  countBadge: {
+    minWidth: 28,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: "#111",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    marginTop: 24,
   },
-  muted: { color: "#666" },
+  countBadgeDisabled: {
+    backgroundColor: "#e0e0e0",
+  },
 
-  errorBox: { backgroundColor: "#fee", padding: 12, borderRadius: 12, gap: 8 },
-  errorTitle: { fontSize: 16, fontWeight: "700", color: "#900" },
-  errorText: { color: "#900" },
-  button: {
-    backgroundColor: "#111",
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
+  countText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fff",
   },
-  buttonText: { color: "#fff", fontWeight: "600" },
-
-  card: {
-    flexDirection: "row",
-    gap: 12,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: "#f3f3f3",
+  countTextDisabled: {
+    color: "#888",
   },
-  image: { width: 86, height: 86, borderRadius: 12, backgroundColor: "#ddd" },
-  imagePlaceholder: { alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 16, fontWeight: "600" },
-  price: { fontSize: 14, fontWeight: "700" },
 });

@@ -6,13 +6,16 @@ import {
   useState,
 } from "react";
 import { fetchFeedXml, parseProductsFromXml } from "./feedApi";
-import type { Product, ProductGroup } from "./types";
+import { type Category, type Product, type ProductGroup } from "./types";
+import { buildGroups, getProductVariant, parseCategories } from "./utils";
 
 type ProductsState = {
   loading: boolean;
   error: string | null;
   products: Product[];
   groups: Record<string, ProductGroup>;
+  categories: Category[];
+  shopName: string;
 };
 
 type ProductsContextValue = ProductsState & {
@@ -21,50 +24,14 @@ type ProductsContextValue = ProductsState & {
 
 const ProductsContext = createContext<ProductsContextValue | null>(null);
 
-function isBlockName(name: string) {
-  return /блок/i.test(name);
-}
-
-function isPackName(name: string) {
-  return /пачка/i.test(name);
-}
-
-const buildGroups = (products: Product[]): Record<string, ProductGroup> => {
-  return products.reduce(
-    (groups, product) => {
-      if (groups[product.id]) {
-        groups[product.id].variants.push({
-          ...product,
-          isPack: isPackName(product.name),
-          isBlock: isBlockName(product.name),
-        });
-
-        return groups;
-      }
-
-      groups[product.id] = {
-        id: product.id,
-        variants: [
-          {
-            ...product,
-            isPack: isPackName(product.name),
-            isBlock: isBlockName(product.name),
-          },
-        ],
-      };
-
-      return groups;
-    },
-    {} as Record<string, ProductGroup>,
-  );
-};
-
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<ProductsState>({
     loading: false,
     error: null,
     products: [],
     groups: {},
+    categories: [],
+    shopName: "",
   });
 
   const reload = useCallback(async () => {
@@ -72,23 +39,33 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const xml = await fetchFeedXml();
-      const items = parseProductsFromXml(xml);
-      const itemsFixIds = items.reduce((acc, item) => {
+      const {
+        items,
+        categories: rawCategories,
+        name,
+      } = parseProductsFromXml(xml);
+
+      const itemsFixIds = items?.reduce((acc, item) => {
+        const variant = getProductVariant(item?.name);
+
         if (acc.find((i) => i.id === item.id)) {
           acc.push({
             ...item,
             oldId: item.id,
             id: item.id + "_" + Math.random().toString(36).substr(2, 5),
+            variant,
           });
 
           return acc;
         }
 
-        acc.push(item);
+        acc.push({ ...item, variant });
         return acc;
       }, [] as Product[]);
 
       const groups = buildGroups(items);
+
+      const categories = parseCategories(rawCategories, items);
 
       setState({
         loading: false,
@@ -96,6 +73,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
           items.length === 0 ? "Фид загрузился, но товары не найдены." : null,
         products: itemsFixIds,
         groups,
+        categories: categories,
+        shopName: name ?? "",
       });
     } catch (e: any) {
       setState((s) => ({

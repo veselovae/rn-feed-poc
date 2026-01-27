@@ -1,8 +1,9 @@
 import { ExternalLink } from "@/components/ExternalLink";
 import {
   ExternalPathString,
+  Redirect,
+  Stack,
   useLocalSearchParams,
-  useRouter,
 } from "expo-router";
 import { useState } from "react";
 import {
@@ -14,6 +15,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { EVariants } from "../consts";
 import { useProducts } from "../products-context";
 import { ProductGroup } from "../types";
 import { sanitizeDescription } from "../utils";
@@ -21,157 +23,172 @@ import { sanitizeDescription } from "../utils";
 type Variant = ProductGroup["variants"][0];
 
 export default function ProductPage() {
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, variant } = useLocalSearchParams<{
+    id: string;
+    variant?: "block" | "pack";
+  }>();
 
   const { loading, groups } = useProducts();
 
   const variants = groups[String(id)]?.variants ?? [];
 
-  const isPackVariantExist = variants.some((v) => v.isPack);
-  const isPackVariantAvailable = variants.some((v) => v.isPack && v.available);
-  const isBlockVariantExist = variants.some((v) => v.isBlock);
+  const isPackVariantExist = variants.some((v) => v.variant === EVariants.PACK);
+  const isPackVariantAvailable =
+    isPackVariantExist && variants.some((v) => v.available);
+
+  const isBlockVariantExist = variants.some(
+    (v) => v.variant === EVariants.BLOCK,
+  );
+  const isBlockVariantAvailable =
+    isBlockVariantExist && variants.some((v) => v.available);
 
   const [currentVariant, setVariant] = useState<Variant>(
-    variants.find((v) => v.isPack) || variants?.[0] || {},
+    (variant ? variants.find((v) => v.variant === variant) : variants?.[0]) ??
+      ({} as Variant),
   );
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  if (!id) {
+    return <Redirect href={{ pathname: "/+not-found" as any }} />;
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Pressable
-        onPress={() => router.back()}
-        style={[styles.button, { alignSelf: "flex-start" }]}
-      >
-        <Text style={styles.buttonText}>Назад</Text>
-      </Pressable>
-
-      {loading && (
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            marginTop: 24,
-          }}
-        >
-          <ActivityIndicator />
-          <Text style={styles.muted}>Загружаю товары…</Text>
-        </View>
-      )}
-
-      {!currentVariant?.name && (
-        <Text style={styles.title} numberOfLines={3}>
-          Товар не найден
-        </Text>
-      )}
-
-      {!!currentVariant?.name && (
-        <>
-          {currentVariant.picture && !imageError ? (
-            <View style={{ alignItems: "center", justifyContent: "center" }}>
-              <Image
-                source={{ uri: currentVariant.picture }}
-                style={styles.image}
-                resizeMode="cover"
-                onError={() => {
-                  setImageLoading(false);
-                  setImageError(true);
-                }}
-                onLoadStart={() => setImageLoading(true)}
-                onLoadEnd={() => setImageLoading(false)}
-              />
-              {imageLoading && (
-                <View style={{ position: "absolute" }}>
-                  <ActivityIndicator />
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={[styles.image, styles.imagePlaceholder]}>
-              <Text style={styles.muted}>no image</Text>
-            </View>
-          )}
-
-          <Text style={styles.title} numberOfLines={3}>
-            {currentVariant?.name}
-          </Text>
-
-          {(isPackVariantExist || isBlockVariantExist) && (
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-              {isPackVariantExist && (
-                <ToggleChip
-                  label="пачка"
-                  active={currentVariant?.isPack}
-                  disabled={!isPackVariantAvailable}
-                  onPress={() =>
-                    setVariant(
-                      variants.find((v) => v.isPack) ?? ({} as Variant),
-                    )
-                  }
-                />
-              )}
-
-              {isBlockVariantExist && (
-                <ToggleChip
-                  label="блок"
-                  active={currentVariant?.isBlock}
-                  disabled={!isBlockVariantExist}
-                  onPress={() =>
-                    setVariant(
-                      variants.find((v) => v.isBlock) ?? ({} as Variant),
-                    )
-                  }
-                />
-              )}
-            </View>
-          )}
-
-          <Text style={styles.price}>
-            {currentVariant.price != null
-              ? `${currentVariant.price.toFixed(2)} ₽`
-              : "Цена не указана"}
-          </Text>
-
-          <Text style={styles.meta}>id: {currentVariant.id}</Text>
-
-          <Text style={styles.meta}>
-            categoryId: {String(currentVariant.categoryId)}
-          </Text>
-
-          {currentVariant.description ? (
-            <>
-              <Text style={styles.sectionTitle}>Описание</Text>
-              <Text style={styles.desc}>
-                {sanitizeDescription(currentVariant.description)}
-              </Text>
-            </>
-          ) : null}
-
-          {currentVariant.url ? (
-            <>
-              <Text style={styles.sectionTitle}>URL</Text>
-              <ExternalLink
-                href={(currentVariant?.url as ExternalPathString) ?? null}
-                style={styles.link}
-              />
-            </>
-          ) : null}
-
-          <Pressable
-            style={[
-              styles.button,
-              { alignItems: "center", marginTop: 20 },
-              !currentVariant.available && styles.chipDisabled,
-            ]}
-            disabled={!currentVariant.available}
+    <>
+      <Stack.Screen
+        options={{
+          title: `Товар ${id}`,
+        }}
+      />
+      <ScrollView contentContainerStyle={styles.container}>
+        {loading && (
+          <View
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginTop: 24,
+            }}
           >
-            <Text style={styles.buttonText}>Купить</Text>
-          </Pressable>
-        </>
-      )}
-    </ScrollView>
+            <ActivityIndicator />
+            <Text style={styles.muted}>Загружаю товары…</Text>
+          </View>
+        )}
+
+        {!currentVariant?.name && (
+          <Text style={styles.title} numberOfLines={3}>
+            Товар не найден
+          </Text>
+        )}
+
+        {!!currentVariant?.name && (
+          <>
+            {currentVariant.picture && !imageError ? (
+              <View style={{ alignItems: "center", justifyContent: "center" }}>
+                <Image
+                  source={{ uri: currentVariant.picture }}
+                  style={styles.image}
+                  resizeMode="cover"
+                  onError={() => {
+                    setImageLoading(false);
+                    setImageError(true);
+                  }}
+                  onLoadStart={() => setImageLoading(true)}
+                  onLoadEnd={() => setImageLoading(false)}
+                />
+                {imageLoading && (
+                  <View style={{ position: "absolute" }}>
+                    <ActivityIndicator />
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={[styles.image, styles.imagePlaceholder]}>
+                <Text style={styles.muted}>no image</Text>
+              </View>
+            )}
+
+            <Text style={styles.title} numberOfLines={3}>
+              {currentVariant?.name}
+            </Text>
+
+            {(isPackVariantExist || isBlockVariantExist) && (
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                {isPackVariantExist && (
+                  <ToggleChip
+                    label="пачка"
+                    active={currentVariant?.variant === EVariants.PACK}
+                    disabled={!isPackVariantAvailable}
+                    onPress={() =>
+                      setVariant(
+                        variants.find((v) => v?.variant === EVariants.PACK) ??
+                          ({} as Variant),
+                      )
+                    }
+                  />
+                )}
+
+                {isBlockVariantExist && (
+                  <ToggleChip
+                    label="блок"
+                    active={currentVariant?.variant === EVariants.BLOCK}
+                    disabled={!isBlockVariantAvailable}
+                    onPress={() =>
+                      setVariant(
+                        variants.find((v) => v?.variant === EVariants.BLOCK) ??
+                          ({} as Variant),
+                      )
+                    }
+                  />
+                )}
+              </View>
+            )}
+
+            <Text style={styles.price}>
+              {currentVariant.price != null
+                ? `${currentVariant.price.toFixed(2)} ₽`
+                : "Цена не указана"}
+            </Text>
+
+            <Text style={styles.meta}>id: {currentVariant.id}</Text>
+
+            <Text style={styles.meta}>
+              categoryId: {String(currentVariant.categoryId)}
+            </Text>
+
+            {currentVariant.description ? (
+              <>
+                <Text style={styles.sectionTitle}>Описание</Text>
+                <Text style={styles.desc}>
+                  {sanitizeDescription(currentVariant.description)}
+                </Text>
+              </>
+            ) : null}
+
+            {currentVariant.url ? (
+              <>
+                <Text style={styles.sectionTitle}>URL</Text>
+                <ExternalLink
+                  href={(currentVariant?.url as ExternalPathString) ?? null}
+                  style={styles.link}
+                />
+              </>
+            ) : null}
+
+            <Pressable
+              style={[
+                styles.button,
+                { alignItems: "center", marginTop: 20 },
+                !currentVariant.available && styles.chipDisabled,
+              ]}
+              disabled={!currentVariant.available}
+            >
+              <Text style={styles.buttonText}>Купить</Text>
+            </Pressable>
+          </>
+        )}
+      </ScrollView>
+    </>
   );
 }
 
@@ -211,7 +228,7 @@ function ToggleChip({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 60,
+    paddingTop: 10,
     paddingHorizontal: 16,
     paddingBottom: 30,
     gap: 12,

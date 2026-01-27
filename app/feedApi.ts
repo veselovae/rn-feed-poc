@@ -1,5 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
-import { Product } from "./types";
+import { ParsedData, RawShopData } from "./types";
 
 const FEED_URL = process.env.EXPO_PUBLIC_FEED_URL;
 
@@ -34,7 +34,7 @@ async function safeReadText(res: Response) {
   }
 }
 
-export function parseProductsFromXml(xml: string): Product[] {
+export function parseProductsFromXml(xml: string): ParsedData {
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "",
@@ -43,5 +43,11 @@ export function parseProductsFromXml(xml: string): Product[] {
 
   const obj = parser.parse(xml);
 
-  return obj?.yml_catalog?.shop?.offers?.offer;
+  const shopRowData = obj?.yml_catalog?.shop as RawShopData;
+
+  return {
+    categories: shopRowData?.categories?.category ?? [],
+    items: shopRowData?.offers?.offer ?? [],
+    name: shopRowData?.name,
+  };
 }
