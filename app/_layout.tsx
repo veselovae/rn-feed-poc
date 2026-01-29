@@ -4,7 +4,9 @@ import { ProductsProvider } from "./products-context";
 export default function RootLayout() {
   return (
     <ProductsProvider>
-      <Stack />
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
     </ProductsProvider>
   );
 }

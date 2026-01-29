@@ -1,4 +1,9 @@
-import { EVariants } from "./consts";
+import { DiscoveredChar } from "./(tabs)/bluetooth-ble";
+import {
+  EVariants,
+  STANDARD_CHARACTERISTICS,
+  STANDARD_SERVICES,
+} from "./consts";
 import { Category, Product, ProductGroup, RawCategory } from "./types";
 
 export const normalizeProductId = (id: string) => {
@@ -85,4 +90,32 @@ export const buildGroups = (
     },
     {} as Record<string, ProductGroup>,
   );
+};
+
+//BLE
+
+export const normalizeUuid = (uuid: string) => uuid.toLowerCase();
+
+export const describeService = (uuid: string): string => {
+  const key = normalizeUuid(uuid);
+  return STANDARD_SERVICES[key] ?? "Manufacturer-specific service";
+};
+
+export const describeCharacteristic = (uuid: string): string => {
+  const key = normalizeUuid(uuid);
+  return (
+    STANDARD_CHARACTERISTICS[key] ?? "Manufacturer-specific characteristic"
+  );
+};
+
+export const flagsShort = (c: DiscoveredChar) => {
+  return [
+    c.isReadable ? "R" : null,
+    c.isWritableWithResponse ? "W" : null,
+    c.isWritableWithoutResponse ? "WNR" : null,
+    c.isNotifiable ? "N" : null,
+    c.isIndicatable ? "I" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 };

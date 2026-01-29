@@ -1,10 +1,9 @@
 import { Stack, useRouter } from "expo-router";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useProducts } from "./products-context";
-
+import { useProducts } from "../products-context";
 export default function CategoriesScreen() {
   const router = useRouter();
-  const { loading, error, categories, shopName } = useProducts();
+  const { loading, error, categories } = useProducts();
 
   if (loading) return <Text>Загрузка…</Text>;
   if (error) return <Text>{error}</Text>;
@@ -13,7 +12,7 @@ export default function CategoriesScreen() {
     <>
       <Stack.Screen
         options={{
-          title: `${shopName ? `${shopName}: ` : ""} Каталог`,
+          title: "Каталог",
         }}
       />
 
