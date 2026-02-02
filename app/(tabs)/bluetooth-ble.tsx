@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { BleManager, Device } from "react-native-ble-plx";
+import { logError, useLogs } from "../logs-context";
 import { describeCharacteristic, describeService, flagsShort } from "../utils";
 
 type UiDevice = {
@@ -58,6 +59,8 @@ export async function ensureAndroidPermissions() {
 }
 
 export default function BluetoothScreen() {
+  const { addLog } = useLogs();
+
   const managerRef = useRef<BleManager | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
@@ -70,6 +73,16 @@ export default function BluetoothScreen() {
 
   const isExpoGo =
     Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+  useEffect(() => {
+    if (isExpoGo) {
+      addLog({
+        level: "warn",
+        source: "system",
+        message: "BLE screen opened in Expo Go: native BLE unavailable",
+      });
+    }
+  }, [isExpoGo, addLog]);
 
   useEffect(() => {
     if (isExpoGo) return;
@@ -101,9 +114,16 @@ export default function BluetoothScreen() {
 
     setIsScanning(true);
 
+    addLog({ level: "info", source: "bluetooth", message: "BLE: start scan" });
+
     try {
       const ok = await ensureAndroidPermissions();
       if (!ok) {
+        addLog({
+          level: "warn",
+          source: "system",
+          message: "BLE: permissions not granted",
+        });
         setIsScanning(false);
         Alert.alert("Разрешения", "Требуются Bluetooth разрешения");
         return;
@@ -114,6 +134,13 @@ export default function BluetoothScreen() {
         { allowDuplicates: false },
         (error, device) => {
           if (error) {
+            addLog({
+              level: "error",
+              source: "bluetooth",
+              message: "BLE: scan error",
+              data: { message: error.message },
+            });
+
             manager.stopDeviceScan();
             setIsScanning(false);
             Alert.alert("Ошибка сканирования", error.message);
@@ -122,18 +149,35 @@ export default function BluetoothScreen() {
           if (!device) return;
 
           const name = device.name ?? device.localName ?? "Unknown";
-          setDevices((prev) => ({
-            ...prev,
-            [device.id]: { id: device.id, name, rssi: device.rssi },
-          }));
+
+          setDevices((prev) => {
+            if (!prev[device.id]) {
+              addLog({
+                level: "debug",
+                source: "bluetooth",
+                message: `BLE: discovered ${device.name ?? device.localName ?? "Unknown"} (${device.id}) rssi=${device.rssi ?? ""}`,
+              });
+            }
+
+            return {
+              ...prev,
+              [device.id]: { id: device.id, name, rssi: device.rssi },
+            };
+          });
         },
       );
 
       setTimeout(() => {
         manager.stopDeviceScan();
         setIsScanning(false);
+        addLog({
+          level: "info",
+          source: "bluetooth",
+          message: "BLE: scan stopped (timeout)",
+        });
       }, 20000);
     } catch (e: any) {
+      logError(addLog, "bluetooth", e, "BLE: startScan exception");
       setIsScanning(false);
       Alert.alert("Error", e?.message ?? "Unknown error");
     }
@@ -158,8 +202,26 @@ export default function BluetoothScreen() {
       setServices([]);
       setConnectedCheck("-");
 
+      addLog({
+        level: "info",
+        source: "bluetooth",
+        message: `BLE: connect -> ${id}`,
+      });
+
       const state = await manager.state();
+
+      addLog({
+        level: "info",
+        source: "system",
+        message: `BLE: manager.state() = ${state}`,
+      });
+
       if (state !== "PoweredOn") {
+        addLog({
+          level: "warn",
+          source: "system",
+          message: `BLE blocked: state=${state}`,
+        });
         Alert.alert(
           "Bluetooth",
           `Bluetooth state: ${state}. Включите Bluetooth и попробуйте снова.`,
@@ -175,10 +237,22 @@ export default function BluetoothScreen() {
       const isConn1 = await device.isConnected();
       setConnectedCheck(String(isConn1));
 
+      addLog({
+        level: "info",
+        source: "bluetooth",
+        message: `BLE: connected. discover services...`,
+      });
+
       const ready = await device.discoverAllServicesAndCharacteristics();
 
       const isConn2 = await ready.isConnected();
       setConnectedCheck(String(isConn2));
+
+      addLog({
+        level: "info",
+        source: "bluetooth",
+        message: "BLE: discoverAllServicesAndCharacteristics done",
+      });
 
       const svcs = await ready.services();
 
@@ -211,8 +285,14 @@ export default function BluetoothScreen() {
       const shownName = ready.name ?? ready.localName ?? ready.id;
 
       Alert.alert("Подключено", shownName);
+      addLog({
+        level: "info",
+        source: "bluetooth",
+        message: `BLE: services discovered: ${discovered.length}`,
+      });
     } catch (e: any) {
       Alert.alert("Ошибка подключения", e?.message ?? "Unknown error");
+      logError(addLog, "bluetooth", e, "BLE: connect failed");
     } finally {
       setIsConnecting(false);
     }
@@ -227,7 +307,15 @@ export default function BluetoothScreen() {
       setConnected(null);
       setServices([]);
       setConnectedCheck("-");
+
+      addLog({
+        level: "info",
+        source: "bluetooth",
+        message: "BLE: disconnect",
+      });
     } catch (e: any) {
+      logError(addLog, "bluetooth", e, "BLE: disconnect failed");
+
       Alert.alert("Ошибка отключения", e?.message ?? "Unknown error");
     }
   };

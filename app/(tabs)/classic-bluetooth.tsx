@@ -17,6 +17,7 @@ import {
 import RNBluetoothClassic, {
   BluetoothDevice,
 } from "react-native-bluetooth-classic";
+import { logError, useLogs } from "../logs-context";
 import { ensureAndroidPermissions } from "./bluetooth-ble";
 
 type ClassicModule = {
@@ -41,8 +42,21 @@ function deviceKey(d: BluetoothDevice) {
 }
 
 export default function ClassicalBluetoothScreen() {
+  const { addLog } = useLogs();
+
   const isExpoGo =
     Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+  useEffect(() => {
+    if (isExpoGo) {
+      addLog({
+        level: "warn",
+        source: "system",
+        message:
+          "Classic Bluetooth screen opened in Expo Go: native module unavailable",
+      });
+    }
+  }, [isExpoGo, addLog]);
 
   const Classic = NativeModules.RNBluetoothClassic as ClassicModule | undefined;
 
@@ -61,6 +75,12 @@ export default function ClassicalBluetoothScreen() {
       setErrorText(
         "Нативный модуль Classic Bluetooth не найден. Проверь сборку (prebuild + assembleDebug) и что приложение не Expo Go.",
       );
+
+      addLog({
+        level: "error",
+        source: "system",
+        message: "Classic: native module not found",
+      });
       return;
     }
 
@@ -68,16 +88,31 @@ export default function ClassicalBluetoothScreen() {
     setErrorText(null);
 
     if (Platform.OS !== "android") {
+      addLog({
+        level: "info",
+        source: "system",
+        message: "Classic: not supported on iOS (limited)",
+      });
+
       setAvailable(null);
       setEnabled(null);
       setBonded([]);
       setAppConnected([]);
+      setLoading(false);
+
       return;
     }
+
+    addLog({ level: "info", source: "bluetooth", message: "Classic: refresh" });
 
     try {
       const ok = await ensureAndroidPermissions();
       if (!ok) {
+        addLog({
+          level: "warn",
+          source: "system",
+          message: "Classic: permissions not granted",
+        });
         Alert.alert("Разрешения", "Требуются Bluetooth разрешения");
         return;
       }
@@ -104,12 +139,24 @@ export default function ClassicalBluetoothScreen() {
       }
 
       setAppConnected(connectedForApp);
+
+      addLog({
+        level: "info",
+        source: "bluetooth",
+        message: `Classic: bonded=${list.length}`,
+      });
+      addLog({
+        level: "info",
+        source: "bluetooth",
+        message: `Classic: appConnected=${connectedForApp.length}`,
+      });
     } catch (e: any) {
+      logError(addLog, "bluetooth", e, "Classic: refresh failed");
       setErrorText(e?.message ?? String(e));
     } finally {
       setLoading(false);
     }
-  }, [Classic, isExpoGo]);
+  }, [addLog, Classic, isExpoGo]);
 
   useEffect(() => {
     refresh();

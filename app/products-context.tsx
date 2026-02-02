@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { fetchFeedXml, parseProductsFromXml } from "./feedApi";
+import { useLogs } from "./logs-context";
 import {
   RawCategory,
   type CategoryNode,
@@ -36,6 +37,8 @@ type ProductsContextValue = ProductsState & {
 const ProductsContext = createContext<ProductsContextValue | null>(null);
 
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
+  const { addLog } = useLogs();
+
   const [state, setState] = useState<ProductsState>({
     loading: false,
     error: null,
@@ -49,13 +52,33 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const reload = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }));
 
+    addLog({
+      level: "info",
+      source: "network",
+      message: "Feed: start loading",
+    });
+    const startedAt = Date.now();
+
     try {
       const xml = await fetchFeedXml();
+
+      addLog({
+        level: "info",
+        source: "network",
+        message: `Feed: loaded XML in ${Date.now() - startedAt}ms`,
+      });
+
       const {
         items,
         categories: rawCategories,
         name,
       } = parseProductsFromXml(xml);
+
+      addLog({
+        level: "info",
+        source: "network",
+        message: `Feed: parsed. items=${items?.length ?? 0}, categories=${rawCategories?.length ?? 0}, shop=${name ?? "-"}`,
+      });
 
       const itemsFixIds = items?.reduce((acc, item) => {
         const variant = getProductVariant(item?.name);
@@ -91,13 +114,25 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         categoriesDictionary: categoriesDictionary,
       });
     } catch (e: any) {
+      addLog({
+        level: "error",
+        source: "network",
+        message: "Feed: failed to load/parse",
+        data: { message: e?.message ?? String(e) },
+      });
+      addLog({
+        level: "error",
+        source: "system",
+        message: "Feed reload finished (error)",
+      });
+
       setState((s) => ({
         ...s,
         loading: false,
         error: e?.message ?? "Неизвестная ошибка загрузки",
       }));
     }
-  }, []);
+  }, [addLog]);
 
   useEffect(() => {
     reload();
