@@ -30,6 +30,7 @@ export type ProductGroup = {
 export type RawCategory = {
   "#text": string;
   id: string;
+  parentId?: string;
 };
 
 export type RawShopData = {
@@ -59,4 +60,9 @@ export type Category = {
   id: number;
   name: string;
   productCount: number;
+};
+
+export type CategoryNode = Category & {
+  children: CategoryNode[];
+  totalProductCount: number;
 };

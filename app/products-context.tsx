@@ -6,16 +6,27 @@ import {
   useState,
 } from "react";
 import { fetchFeedXml, parseProductsFromXml } from "./feedApi";
-import { type Category, type Product, type ProductGroup } from "./types";
-import { buildGroups, getProductVariant, parseCategories } from "./utils";
+import {
+  RawCategory,
+  type CategoryNode,
+  type Product,
+  type ProductGroup,
+} from "./types";
+import {
+  buildGroups,
+  getCategoryDictionary,
+  getProductVariant,
+  parseCategories,
+} from "./utils";
 
 type ProductsState = {
   loading: boolean;
   error: string | null;
   products: Product[];
   groups: Record<string, ProductGroup>;
-  categories: Category[];
+  categories: CategoryNode[];
   shopName: string;
+  categoriesDictionary: Record<string, RawCategory>;
 };
 
 type ProductsContextValue = ProductsState & {
@@ -32,6 +43,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     groups: {},
     categories: [],
     shopName: "",
+    categoriesDictionary: {},
   });
 
   const reload = useCallback(async () => {
@@ -66,6 +78,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       const groups = buildGroups(items);
 
       const categories = parseCategories(rawCategories, items);
+      const categoriesDictionary = getCategoryDictionary(rawCategories);
 
       setState({
         loading: false,
@@ -75,6 +88,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         groups,
         categories: categories,
         shopName: name ?? "",
+        categoriesDictionary: categoriesDictionary,
       });
     } catch (e: any) {
       setState((s) => ({

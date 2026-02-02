@@ -35,6 +35,15 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="logs"
+        options={{
+          title: "Logs",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="code-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

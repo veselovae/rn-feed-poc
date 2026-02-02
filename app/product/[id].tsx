@@ -1,4 +1,5 @@
 import { ExternalLink } from "@/components/ExternalLink";
+import * as Linking from "expo-linking";
 import {
   ExternalPathString,
   Redirect,
@@ -48,6 +49,10 @@ export default function ProductPage() {
   );
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  const openProductLink = () => {
+    Linking.openURL(currentVariant?.url);
+  };
 
   if (!id) {
     return <Redirect href={{ pathname: "/+not-found" as any }} />;
@@ -182,6 +187,7 @@ export default function ProductPage() {
                 !currentVariant.available && styles.chipDisabled,
               ]}
               disabled={!currentVariant.available}
+              onPress={openProductLink}
             >
               <Text style={styles.buttonText}>Купить</Text>
             </Pressable>

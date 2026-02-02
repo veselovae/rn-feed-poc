@@ -17,12 +17,11 @@ export default function Index() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const { loading, error, products, reload, categories } = useProducts();
+  const { loading, error, products, reload, categoriesDictionary } =
+    useProducts();
 
   const categoryId = Number(id);
-  const categoryName = categories?.find(
-    (category) => category.id === Number(id),
-  )?.name;
+  const categoryName = categoriesDictionary[Number(id)]?.["#text"];
 
   const filtered = products.filter((p) => p.categoryId === categoryId);
 

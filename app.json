@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "rn-feed-poc",
-    "slug": "rn-feed-poc",
+    "name": "IQOS POC",
+    "slug": "iqos-poc",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
