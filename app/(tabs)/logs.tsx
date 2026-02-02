@@ -113,13 +113,12 @@ function formatLogLine(l: LogEntry) {
 function LogRow({ item }: { item: LogEntry }) {
   return (
     <View style={styles.card}>
-      <Text style={styles.line} numberOfLines={2}>
+      <Text style={styles.line}>
         {formatLogLine({ ...item, data: undefined })}
       </Text>
+
       {item.data !== undefined ? (
-        <Text style={styles.data} numberOfLines={6}>
-          {safeStringify(item.data)}
-        </Text>
+        <Text style={styles.data}>{safeStringify(item.data)}</Text>
       ) : null}
     </View>
   );
